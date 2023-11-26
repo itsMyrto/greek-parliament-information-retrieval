@@ -38,7 +38,6 @@ This function cleans the speeches which are found in the column `speech` of the 
 def clean_data():
     df = pd.read_csv("/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv")
 
-    print("Here")
     df = df.dropna(subset=['member_name'])
 
     for index, row in df.iterrows():
@@ -60,6 +59,4 @@ def clean_data():
         row["speech"] = cleaned_speech
         print(row["speech"])
 
-
-print("Here")
 clean_data()
