@@ -7,19 +7,8 @@ from assets.stopwords import STOPWORDS
 stopwords = set(STOPWORDS)
 
 
-def pagerank(bagOfWords: list):
-    # window = 3
-    # ranks = {}
-    # for i in range(len(bagOfWords)):
-    #     if bagOfWords[i] not in ranks:
-    #         ranks[bagOfWords[i]] = 1
-    #     for j in range(i + 1, min(i + window, len(bagOfWords))):
-    #         if bagOfWords[j] not in ranks:
-    #             ranks[bagOfWords[j]] = 0
-    #         ranks[bagOfWords[j]] += 1 / (j - i)
-    # print(ranks)
-    # print(sorted(ranks, key=ranks.get, reverse=True)[:10])
-    # return sorted(ranks, key=ranks.get, reverse=True)[:10]
+# Bibliography: https://link.springer.com/chapter/10.1007/978-3-540-71701-0_95
+def pagerank(bagOfWords: list, num):
     d = 0.85
     window = 3
 
@@ -49,13 +38,13 @@ def pagerank(bagOfWords: list):
         for word in graph.keys():
             graph[word]["score"] = (1 - d) + d * sum(graph[neighbor]["score"] / graph[neighbor]["out"] for neighbor in graph[word]["neighbors"])
 
-    return sorted(graph, key=lambda x: graph[x]["score"], reverse=True)[:3]
+    return sorted(graph, key=lambda x: graph[x]["score"], reverse=True)[:num]
 
 
-def keywords(speech: str):
-    pageranks = pagerank(speech.split())
+def keywords(speech: str, num: int):
+    # pageranks = pagerank(speech.split(), num)
     # print(pageranks)
-    return " ".join(pagerank(speech.split()))
+    return " ".join(pagerank(speech.split(), num))
 
 
 unwanted_pattern = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
@@ -108,20 +97,26 @@ def makePreProcessedDB(conn: sqlite3.Connection):
 
 
 def makeKeywordsDB(conn: sqlite3.Connection):
-    # avdl = conn.cursor().execute("SELECT AVG(speechLength) FROM processed_speeches").fetchone()[0]
-    # print(avdl)
 
+    # Creating keywords for each speech
     df = pd.read_sql_query("SELECT * FROM processed_speeches", conn)
     df.rename(columns={"index": "ID_1"}, inplace=True)
-    df["keywords"] = df["speech"].apply(lambda x: keywords(x))
+    df["keywords"] = df["speech"].apply(lambda x: keywords(x, 3))
     df.drop(columns=["speech"], inplace=True)
 
     df.to_sql("keywords", con=conn, if_exists='replace', index=True)
 
+    # Creating keywords per member
+    df = pd.read_sql_query("SELECT * FROM processed_speeches", conn)
+    df.groupby("member_name")["speech"].apply(lambda x: " ".join(x)).apply(lambda x: keywords(x, 10)).to_sql("keywords_per_member", con=conn, if_exists='replace', index=True)
+
+    # Creating keywords per political party
+    df = pd.read_sql_query("SELECT * FROM processed_speeches", conn)
+    df.groupby("political_party")["speech"].apply(lambda x: " ".join(x)).apply(lambda x: keywords(x, 10)).to_sql("keywords_per_party", con=conn, if_exists='replace', index=True)
 
 if __name__ == "__main__":
     conn = sqlite3.connect('speeches.db')
+
     # makeDb(conn)
     # makePreProcessedDB(conn)
     makeKeywordsDB(conn)
-    # Read the speeches from the database
