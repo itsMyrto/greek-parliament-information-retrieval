@@ -115,7 +115,7 @@ def search_query():
         print("Sorry, nothing found. Please try to rephrase your sentence.")
 
 
-search_query()
+# search_query()
 
 
 # TODO: CREATE THE WEB UI FOR THE SEARCH ENGINE
