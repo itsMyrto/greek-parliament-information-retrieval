@@ -1,12 +1,13 @@
+import numpy
 import numpy as np
-from search_engine import create_inverse_index_catalogue
+from inverse_index import create_inverse_index_catalogue, get_number_of_docs
 
-NUMBER_OF_DOCS = 5
+NUMBER_OF_DOCS = get_number_of_docs()
 
 # This is the threshold we set for the strongest concepts.
 THRESHOLD = 4
 
-def construct_matrix():
+def construct_matrix() -> np.ndarray:
 
     # We load the inverse index catalogue
     inverse_index_catalogue = create_inverse_index_catalogue()
@@ -35,6 +36,13 @@ def construct_matrix():
             matrix[document_id, term_counter] = 1
         term_counter += 1
 
+    return matrix
+
+
+def LSI() -> np.array:
+
+    matrix = construct_matrix()
+
     # Using the SVD function from numpy
     U, S, Vh = np.linalg.svd(matrix, full_matrices=False)
 
@@ -61,9 +69,10 @@ def construct_matrix():
 
     # This is a 2D matrix that contains the document representation in a multidimensional space
     # The representation used is the term to concept
-    # The formula for this representation is document_concept = document * V
-    document_representation = np.matmul(matrix, np.transpose(Vh_k))
+    # The formula for this representation is: document_concept = document * V
+    documents_representation = np.matmul(matrix, np.transpose(Vh_k))
 
-    print(document_representation)
+    print(documents_representation)
 
-construct_matrix()
+    return documents_representation
+
