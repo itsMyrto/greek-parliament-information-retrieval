@@ -12,7 +12,8 @@ def create_inverse_index_catalogue() -> dict:
 
     for index, row in df.iterrows():
 
-        speech = row["speech"].split(" ")
+        speech = str(row["speech"]) if pd.notna(row["speech"]) else ""
+        speech = speech.split(" ")
         doc_id = row["doc_id"]
 
         for word in speech:
@@ -56,7 +57,8 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
         if accumulators[i] == 0:
             continue
         else:
-            speech = df["speech"][i].split(" ")
+            speech = str(df["speech"][i]) if pd.notna(df["speech"][i]) else ""
+            speech = speech.split(" ")
             for word in speech:
                 word_list = inverse_index_catalogue[word]
                 nt = word_list[0]

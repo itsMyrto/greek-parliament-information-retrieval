@@ -4,11 +4,11 @@ from assets.greek_stopwords import STOP_WORDS
 import spacy
 from greek_stemmer import stemmer
 
-NUMBER_OF_DOCS = 6
+NUMBER_OF_DOCS = 20000
+nlp = spacy.load("el_core_news_sm")
 
 # please run this: python -m spacy download el_core_news_sm==3.7.1      I didn't know how to add it in the requirements.txt
 def word_stemming(word: str) -> str:
-    nlp = spacy.load("el_core_news_sm")
     doc = nlp(word)
     tag = doc[0].pos_
     if tag == "NOUN":
@@ -34,6 +34,7 @@ def remove_unwanted_pattern(word: str) -> str:
 
 def clean_dataset():
     dictionary = {}
+    cleaned_data = []
     document_id = 0
     df = pd.read_csv("/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv")
     df = df.dropna(subset=['member_name'])
@@ -61,11 +62,14 @@ def clean_dataset():
                 dictionary[cleaned_word] = stemmed_word
                 cleaned_speech = cleaned_speech + " " + stemmed_word
 
-        df.loc[index, "speech"] = cleaned_speech[1:]
-        df.loc[index, "doc_id"] = document_id
+        cleaned_data.append([cleaned_speech[1:], document_id])
         document_id += 1
+
         if document_id == NUMBER_OF_DOCS:
-            df = df.head(5)
-            df = df.astype({"doc_id": "int"})
-            df.to_csv("cleaned_data.csv")
+            new_df = pd.DataFrame(cleaned_data, columns=['speech', 'doc_id'])
+            new_df = new_df.astype({"doc_id": "int"})
+            new_df = new_df.astype({"speech": "str"})
+            new_df.to_csv("cleaned_data.csv")
             break
+
+# clean_dataset()

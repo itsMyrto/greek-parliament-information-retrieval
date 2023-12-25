@@ -1,16 +1,18 @@
-import numpy
 import numpy as np
+from scipy.sparse.linalg import svds
 from inverse_index import create_inverse_index_catalogue, get_number_of_docs
 
 NUMBER_OF_DOCS = get_number_of_docs()
 
 # This is the threshold we set for the strongest concepts.
-THRESHOLD = 4
+THRESHOLD = 10
 
 def construct_matrix() -> np.ndarray:
 
     # We load the inverse index catalogue
     inverse_index_catalogue = create_inverse_index_catalogue()
+
+    print(len(inverse_index_catalogue))
 
     # A 2D empty row-array  is created in order to store the different terms
     terms = np.empty((1, len(inverse_index_catalogue)), dtype=object)
@@ -36,41 +38,28 @@ def construct_matrix() -> np.ndarray:
             matrix[document_id, term_counter] = 1
         term_counter += 1
 
+    print(matrix.shape)
+
     return matrix
 
 
 def LSI() -> np.array:
-
     matrix = construct_matrix()
 
-    # Using the SVD function from numpy
-    U, S, Vh = np.linalg.svd(matrix, full_matrices=False)
+    U, S, Vh = svds(matrix, k=THRESHOLD)
 
-    # Finding the top-k concepts that have strength greater than the threshold
-    top_k = 0
+    print(U.shape)
+    print(S.shape)
+    print(Vh.shape)
 
-    for strength in S:
-        if strength >= THRESHOLD:
-            top_k += 1
-        else:
-            break
-
-    # This means that there are no concepts with such a big strength as the threshold
-    if top_k == 0:
-        print("Sorry there is no concept with strength greater than: ", THRESHOLD)
-        exit(0)
-
-    # Keeping only the k concepts
-    U_k = U[:, :top_k]
-    Vh_k = Vh[: top_k, :]
-    S_k = S[:top_k]
-    S_k = np.diag(S_k)
-
+    print(U)
+    print(S)
+    print(Vh)
 
     # This is a 2D matrix that contains the document representation in a multidimensional space
     # The representation used is the term to concept
     # The formula for this representation is: document_concept = document * V
-    documents_representation = np.matmul(matrix, np.transpose(Vh_k))
+    documents_representation = np.matmul(matrix, np.transpose(Vh))
 
     print(documents_representation)
 
