@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='result-styles.css') }}">
+     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <title>Search Engine</title>
+</head>
+<body>
+    <div class="container">
+        <div class="search-bar">
+            <form action="{{ url_for('result') }}" method="POST" class="search-form">
+                <img src="{{ url_for('static', filename='greek-parliament.png') }}" alt="Search Engine Logo" class="logo">
+                <div class="input-container">
+                    <input type="text" name="query" placeholder="Search Engine">
+                    <img src="{{ url_for('static', filename='search.png') }}" alt="Search Icon" class="icon">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="search-results">
+    <hr class="blue-line"> <!-- Blue line below the search bar -->
+
+    {% for result in results %}
+    <div class="result-card">
+        <div class="card-header">
+            <h3 class="card-title">{{ result.title }}</h3>
+            <div class="dropdown-arrow" data-toggle="collapse" data-target="#result{{ loop.index }}">&#9660;</div>
+        </div>
+        <div id="result{{ loop.index }}" class="card-content collapse">
+            <p class="p">{{ result.content }}</p>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+
+
+</body>
+</html>
+

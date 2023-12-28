@@ -1,0 +1,121 @@
+.body {
+    font-family: Arial, sans-serif;
+}
+
+.search-bar {
+    flex-direction: column;
+    margin-top: 20px;
+}
+
+.logo {
+    height: 60px;
+    margin-right: 10px;
+    margin-left: 10px;
+}
+
+
+.search-form {
+    transition: all 0.5s ease;
+    display: flex;
+}
+
+.input-container {
+    position: relative;
+    display: flex;
+    margin-left: 20px; /* Add margin to the input container */
+    margin-bottom: 10px;
+}
+
+input {
+    padding: 15px;
+    width: 600px;
+    border: 2px solid #6698f5;
+    border-radius: 25px;
+}
+
+.container {
+    overflow-y: auto;
+}
+
+.icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    height: 24px; /* Adjust the height as needed */
+}
+
+.search-results {
+    margin-top: 20px; /* Add margin above the search results */
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.blue-line {
+    border: none;
+    border-top: 1px solid #6698f5;
+    width: 100%;
+    margin-top: 30px; /* Add margin to separate the line from the input */
+    box-sizing: border-box; /* Ensure padding and border don't increase the width */
+}
+
+li {
+    margin: 10px 0;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.result-card {
+    background-color: #d4e3fd;
+    border-radius: 5px;
+    margin: 10px;  /* Add margin to all sides */
+    padding: 3px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff !important;
+}
+
+.card-title {
+    color: #71a0fa;
+}
+
+.p {
+    margin: 10px;
+    color: gray;
+}
+
+.dropdown-arrow {
+    cursor: pointer;
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
+
+.dropdown-arrow.open {
+    transform: rotate(180deg);
+}
+
+.card-content {
+    display: none; /* Initially hide the card content */
+}
+
+.search-results ul li{
+    color: white;
+}
+
+.card-content.show {
+    display: block; /* Show the card content when it's open */
+}
+
+

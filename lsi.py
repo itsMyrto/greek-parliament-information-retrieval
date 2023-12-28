@@ -1,18 +1,18 @@
 import numpy as np
 from scipy.sparse.linalg import svds
 from inverse_index import create_inverse_index_catalogue, get_number_of_docs
+from sklearn.cluster import KMeans
+import pandas as pd
 
 NUMBER_OF_DOCS = get_number_of_docs()
 
 # This is the threshold we set for the strongest concepts.
-THRESHOLD = 10
+THRESHOLD = 80
 
-def construct_matrix() -> np.ndarray:
+def construct_matrix() -> np.array:
 
     # We load the inverse index catalogue
     inverse_index_catalogue = create_inverse_index_catalogue()
-
-    print(len(inverse_index_catalogue))
 
     # A 2D empty row-array  is created in order to store the different terms
     terms = np.empty((1, len(inverse_index_catalogue)), dtype=object)
@@ -38,30 +38,44 @@ def construct_matrix() -> np.ndarray:
             matrix[document_id, term_counter] = 1
         term_counter += 1
 
-    print(matrix.shape)
-
-    return matrix
+    return matrix, terms, documents
 
 
 def LSI() -> np.array:
-    matrix = construct_matrix()
+    matrix, terms, documents = construct_matrix()
 
+    # This function returns the top k singular values of the decomposition
     U, S, Vh = svds(matrix, k=THRESHOLD)
 
-    print(U.shape)
-    print(S.shape)
-    print(Vh.shape)
-
-    print(U)
-    print(S)
-    print(Vh)
+    print(U.shape, U)
+    print(S.shape, S)
+    print(Vh.shape, Vh)
 
     # This is a 2D matrix that contains the document representation in a multidimensional space
     # The representation used is the term to concept
     # The formula for this representation is: document_concept = document * V
+    # projecting the original data into the space defined by the top singular vectors
     documents_representation = np.matmul(matrix, np.transpose(Vh))
 
-    print(documents_representation)
+    return documents_representation, terms, documents
 
-    return documents_representation
+def speech_clustering():
 
+    reduced_document_representation, terms, documents = LSI()
+    print(reduced_document_representation.shape)
+
+    k = 1000
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init="auto")
+
+    # Applying the kmeans algorithm and then save for every point the cluster id it belongs in a new column in the dataframe
+    cluster_id = kmeans.fit_predict(reduced_document_representation)
+
+    df_ = pd.read_csv("/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv")
+    df_.dropna(subset=['member_name'], inplace=True)
+    df_ = df_.reset_index(drop=True)
+
+    for i in range(0, len(cluster_id)):
+        if cluster_id[i] == 556:
+            print(df_.loc[i, "speech"])
+
+speech_clustering()

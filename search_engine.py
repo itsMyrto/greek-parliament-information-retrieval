@@ -2,7 +2,7 @@ import pandas as pd
 from inverse_index import get_number_of_docs, calculate_tf_idf_similarity
 from cleanup_myrto import word_stemming, remove_unwanted_pattern
 
-TOP_K = 10
+TOP_K = 20
 NUMBER_OF_DOCS = get_number_of_docs()
 
 def clean_query(query: list) -> str:
@@ -35,8 +35,8 @@ def find_top_k(cleaned_query: list) -> list:
     print(indexes)
     return indexes
 
-def search_query():
-    query = input("Enter a query: ").split(" ")
+def search_query(query):
+    query = query.split(" ")
     cleaned_query = clean_query(query)[1:].split(" ")
     print(cleaned_query)
     similarity_indexes = find_top_k(cleaned_query)
@@ -45,19 +45,15 @@ def search_query():
     df_.dropna(subset=['member_name'], inplace=True)
     df_ = df_.reset_index(drop=True)
 
+    results = []
+
     if len(similarity_indexes) != 0:
         for similarity_index in similarity_indexes:
             if similarity_index >= 0:
-                print(df_.loc[similarity_index, "speech"])
+                title = df_.loc[similarity_index, "sitting_date"] + "-" + df_.loc[similarity_index, "member_name"].upper() + "-" + df_.loc[similarity_index, "political_party"].upper() + ":'" + df_.loc[similarity_index, "speech"][:30] + "..." + "'"
+                results.append({"title": title, "content": df_.loc[similarity_index, "speech"]})
     else:
         print("Sorry, nothing found. Please try to rephrase your sentence.")
 
 
-# TODO: CREATE THE WEB UI FOR THE SEARCH ENGINE
-
-
-
-
-
-
-
+    return results
