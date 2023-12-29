@@ -1,10 +1,11 @@
+import os
 import pandas as pd
 import re
 from assets.greek_stopwords import STOP_WORDS
 import spacy
 from greek_stemmer import stemmer
 
-NUMBER_OF_DOCS = 20000
+FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
 nlp = spacy.load("el_core_news_sm")
 
 # please run this: python -m spacy download el_core_news_sm==3.7.1      I didn't know how to add it in the requirements.txt
@@ -36,11 +37,19 @@ def clean_dataset():
     dictionary = {}
     cleaned_data = []
     document_id = 0
-    df = pd.read_csv("/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv")
+
+    if not os.path.isfile(FILEPATH):
+        print("File ", FILEPATH, " not found. Please enter a valid path")
+        exit(1)
+
+    df = pd.read_csv(FILEPATH)
     df = df.dropna(subset=['member_name'])
     df = df.drop(columns=["member_name", "sitting_date", "parliamentary_period", "parliamentary_session",
                           "parliamentary_sitting", "political_party", "government", "member_region", "roles",
                           "member_gender"])
+
+    NUMBER_OF_DOCS = len(df)
+    NUMBER_OF_DOCS = 30000
 
     for index, row in df.iterrows():
 
@@ -72,4 +81,6 @@ def clean_dataset():
             new_df.to_csv("cleaned_data.csv")
             break
 
-# clean_dataset()
+if not os.path.isfile("cleaned_data.csv"):
+    print("Here !")
+    clean_dataset()

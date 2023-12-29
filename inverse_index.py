@@ -1,5 +1,12 @@
+import os
 import pandas as pd
 import math
+
+import cleanup_myrto
+
+if not os.path.isfile("cleaned_data.csv"):
+    print("Creating cleaned dataset...")
+    cleanup_myrto.clean_dataset()
 
 df = pd.read_csv("cleaned_data.csv")
 
@@ -76,3 +83,4 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
                         ld[i] += (tf*idft)**2
         accumulators[i] = accumulators[i] / math.sqrt(ld[i])
     return accumulators
+

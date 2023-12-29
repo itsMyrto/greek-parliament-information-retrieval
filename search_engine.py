@@ -1,9 +1,11 @@
+import os
 import pandas as pd
 from inverse_index import get_number_of_docs, calculate_tf_idf_similarity
 from cleanup_myrto import word_stemming, remove_unwanted_pattern
 
 TOP_K = 20
 NUMBER_OF_DOCS = get_number_of_docs()
+FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
 
 def clean_query(query: list) -> str:
     cleaned_query = ""
@@ -41,7 +43,7 @@ def search_query(query):
     print(cleaned_query)
     similarity_indexes = find_top_k(cleaned_query)
     print("Loading....")
-    df_ = pd.read_csv("/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv")
+    df_ = pd.read_csv(FILEPATH)
     df_.dropna(subset=['member_name'], inplace=True)
     df_ = df_.reset_index(drop=True)
 
@@ -57,3 +59,4 @@ def search_query(query):
 
 
     return results
+
