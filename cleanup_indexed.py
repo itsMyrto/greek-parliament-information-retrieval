@@ -34,6 +34,15 @@ def stem_word(word: str) -> str:
         keys[word] = word_stemming(word)
         return keys[word] 
 
+dictionary = {}
+
+unwanted_pattern = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
+def remove_unwanted_pattern(word: str) -> str:
+    cleaned_word = re.sub(unwanted_pattern, '', word)
+    if (cleaned_word == " ") or (cleaned_word.lower() in STOP_WORDS) or (len(cleaned_word) == 1) or (
+            cleaned_word == ""):
+        cleaned_word = ""
+    return cleaned_word
 """
 This function cleans the speeches which are found in the column `speech` of the dataframe, following these steps:
 (1) Drop the rows where the speaker is unknown. The speaker is found in the `member_id` column
@@ -49,13 +58,18 @@ This function cleans the speeches which are found in the column `speech` of the 
 """
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=['member_name'])
+    df = df.drop(columns=["member_name", "sitting_date", "parliamentary_period", "parliamentary_session",
+                          "parliamentary_sitting", "political_party", "government", "member_region", "roles",
+                          "member_gender"])
+    
+    df.rename(columns={"index": "original_id"}, inplace=True)
 
     """ Preparing lookup tables for cleaning """
     unwanted_pattern = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
-    accents_translation_table = str.maketrans(
-        "άέήίόύώϊΐϋΰὰὲὴὶὸὺὼᾶῆῖῦῶ",
-        "αεηιουωιιυυαεηιουωαηιυω"
-    )
+    # accents_translation_table = str.maketrans(
+    #     "άέήίόύώϊΐϋΰὰὲὴὶὸὺὼᾶῆῖῦῶ",
+    #     "αεηιουωιιυυαεηιουωαηιυω"
+    # )
     
     for index, row in df.iterrows():
 
@@ -65,13 +79,17 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
         for i in range(0, len(speech)):
 
             word = speech[i]
-            
-            cleaned_word = re.sub(unwanted_pattern, '', word)#.translate(accents_translation_table)
+            cleaned_word = remove_unwanted_pattern(word)
 
-            if (cleaned_word == "") or (cleaned_word.lower() in STOP_WORDS) or (len(cleaned_word) == 1):
+            if cleaned_word == "":
                 continue
 
-            cleaned_speech = cleaned_speech + " " + stem_word(cleaned_word).lower()
+            if cleaned_word in dictionary:
+                cleaned_speech = cleaned_speech + " " + dictionary[cleaned_word]
+            else:
+                stemmed_word = stem_word(cleaned_word).lower()
+                dictionary[cleaned_word] = stemmed_word
+                cleaned_speech = cleaned_speech + " " + stemmed_word
 
         row["speech"] = cleaned_speech
         
@@ -80,15 +98,15 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def processInChunks(filename: str, output: str, nrows: int | None = None, chunksize: int = 100, verbose = bool | None):
     # Reading the csv file (1280918 total lines, chunksize = how many at once)
-    with pd.read_csv(filename, chunksize=chunksize, usecols=["member_name", "sitting_date", "political_party", "speech"], nrows=nrows) as cursor:
+    with pd.read_csv(filename, chunksize=chunksize, nrows=nrows) as cursor:
         start = time()
         for i, chunk in enumerate(cursor):
             chunkStart = time()
             df = clean_data(chunk)
             if i == 0:
-                df.to_csv(output, index=False, header=True)
+                df.to_csv(output, index=True, header=True)
             else:
-                df.to_csv(output, mode="a", index=False, header=False)
+                df.to_csv(output, mode="a", index=True, header=False)
             if verbose:
                 print(f"Chunk {i} done in {time() - chunkStart} seconds")
                 chunkStart = time()
@@ -98,6 +116,3 @@ if __name__ == "__main__":
     
     processInChunks(filename="Greek_Parliament_Proceedings_1989_2020.csv", output="cleaned.csv", nrows=10000, chunksize=1000)
     
-    # saving keys with pickle
-    with open("keys.pickle", "wb") as f:
-        pickle.dump(keys, f)
