@@ -1,10 +1,9 @@
 import os
 import pandas as pd
-from inverse_index import get_number_of_docs, calculate_tf_idf_similarity
+from inverse_index import calculate_tf_idf_similarity
 from cleanup_myrto import word_stemming, remove_unwanted_pattern
 
 TOP_K = 20
-NUMBER_OF_DOCS = get_number_of_docs()
 FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
 
 def clean_query(query: list) -> str:

@@ -8,7 +8,8 @@ from greek_stemmer import stemmer
 FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
 nlp = spacy.load("el_core_news_sm")
 
-# please run this: python -m spacy download el_core_news_sm==3.7.1      I didn't know how to add it in the requirements.txt
+
+# please run this: python -m spacy download el_core_news_sm==3.7.1
 def word_stemming(word: str) -> str:
     doc = nlp(word)
     tag = doc[0].pos_
@@ -48,9 +49,7 @@ def clean_dataset():
                           "parliamentary_sitting", "political_party", "government", "member_region", "roles",
                           "member_gender"])
 
-    NUMBER_OF_DOCS = len(df)
-    NUMBER_OF_DOCS = 30000
-
+    NUMBER_OF_DOCS = 50000
     for index, row in df.iterrows():
 
         speech = row["speech"].split(" ")
@@ -80,7 +79,3 @@ def clean_dataset():
             new_df = new_df.astype({"speech": "str"})
             new_df.to_csv("cleaned_data.csv")
             break
-
-if not os.path.isfile("cleaned_data.csv"):
-    print("Here !")
-    clean_dataset()

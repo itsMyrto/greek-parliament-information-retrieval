@@ -4,12 +4,28 @@ from scipy.sparse.linalg import svds
 from inverse_index import create_inverse_index_catalogue, get_number_of_docs
 from sklearn.cluster import KMeans
 import pandas as pd
+import pickle
 
+
+NUMBER_OF_DOCS = get_number_of_docs()
+FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
+
+if not os.path.isfile(FILEPATH):
+    print("File ", FILEPATH, " not found. Please modify the FILEPATH parameter inside the script.")
+    exit(1)
+
+CLUSTERS = 500
+CLUSTER_ID = 100
+THRESHOLD = 80
 
 def construct_matrix() -> np.array:
 
     # We load the inverse index catalogue
-    inverse_index_catalogue = create_inverse_index_catalogue()
+    if not os.path.isfile("inverse_index.pkl"):
+        create_inverse_index_catalogue()
+
+    with open("inverse_index.pkl", 'rb') as file:
+        inverse_index_catalogue = pickle.load(file)
 
     # A 2D empty row-array  is created in order to store the different terms
     terms = np.empty((1, len(inverse_index_catalogue)), dtype=object)
@@ -73,17 +89,6 @@ def LSI() -> np.array:
             print(df_.loc[i, "speech"])
 
 
-
-NUMBER_OF_DOCS = get_number_of_docs()
-FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
-
-if not os.path.isfile(FILEPATH):
-    print("File ", FILEPATH, " not found. Please modify the FILEPATH parameter inside the script.")
-    exit(1)
-
-CLUSTERS = 500
-CLUSTER_ID = 100
-THRESHOLD = 80
 
 LSI()
 

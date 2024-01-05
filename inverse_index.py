@@ -1,8 +1,9 @@
 import os
 import pandas as pd
 import math
-
+import pickle
 import cleanup_myrto
+
 
 if not os.path.isfile("cleaned_data.csv"):
     print("Creating cleaned dataset...")
@@ -13,7 +14,7 @@ df = pd.read_csv("cleaned_data.csv")
 def get_number_of_docs():
     return len(df)
 
-def create_inverse_index_catalogue() -> dict:
+def create_inverse_index_catalogue():
 
     inverse_index_catalogue = {}
 
@@ -40,12 +41,25 @@ def create_inverse_index_catalogue() -> dict:
                 word_list = [1, [doc_id, 1]]
                 inverse_index_catalogue[word] = word_list
 
-    # print("Catalogue: ", inverse_index_catalogue)
-    return inverse_index_catalogue
+    print("I am done")
+
+    with open('inverse_index.pkl', 'wb') as file:
+        pickle.dump(inverse_index_catalogue, file)
+
+    return
 
 def calculate_tf_idf_similarity(cleaned_query: list) -> list:
 
-    inverse_index_catalogue = create_inverse_index_catalogue()
+    if not os.path.isfile("inverse_index.pkl"):
+        create_inverse_index_catalogue()
+        print("Creating the inverse index")
+
+    with open("inverse_index.pkl", 'rb') as file:
+        inverse_index_catalogue = pickle.load(file)
+
+    print("Opened and continuing the work")
+
+
     NUMBER_OF_DOCS = get_number_of_docs()
     accumulators = [0] * NUMBER_OF_DOCS
     ld = [0] * NUMBER_OF_DOCS
