@@ -2,11 +2,13 @@ import pandas as pd
 import spacy
 import sqlite3
 from copy import deepcopy
+
 conn = sqlite3.connect('speeches.db')
 nlp = spacy.load("el_core_news_sm")
 
 
-
+def isNaN(subject):
+    return subject != subject
 
 def cleanWord(word: str) -> str:
     word = word.lower()
@@ -43,18 +45,42 @@ def reprocessLookups(lut: dict) -> dict:
         newItem["happiness"] = lut[item][24:28]
         newItem["sadness"] = lut[item][28:32]
         newItem["surprise"] = lut[item][32:36]
-        print(type(newItem["happiness"][1]))
-        nan = float("nan")
-        badIndices = []
+        emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"}
+        
+        badIndices = set()
+        
+        # Removing indices which contain NaN values
         for i in range(4):
             for key in newItem:
-                if newItem[key][i] == nan:
-                    badIndices.append(i)
-        print(badIndices)
-        exit(1)
-        # for i in range(4):
-        #     if newItem["positions"][i] == nan:
-        # lut[item] = newItem
+                if isNaN(newItem[key][i]):
+                    newItem[key][i] = 0
+                    # if key in emotions:
+                    #     newItem[key][i] = 0
+                    # else:
+                    #     badIndices.add(i)
+                    
+        # if item == "ωραία":
+        #     print(badIndices)
+        #     exit(1)
+        
+            
+        
+        # combining those with the same positions
+        foundPos = set()
+        i = 0
+        for i, pos in enumerate(newItem["positions"]):
+            if pos not in foundPos:
+                foundPos.add(pos)
+                continue
+            badIndices.add(i)
+        
+        # Dropping the bad indices
+        for key in newItem:
+            newItem[key] = [newItem[key][i] for i in range(4) if i not in badIndices]
+            
+        lut[item] = newItem 
+    
+    return lut
         
 if __name__ == "__main__":
     # Read the data from the tsv file
@@ -73,17 +99,6 @@ if __name__ == "__main__":
                 secondDict[_word] = wordsDict[word]
             del secondDict[word]
     # print(secondDict)
-    reprocessLookups(secondDict)
-    # Print the first 5 rows of the dataframe
-    # print(wordSentiments.head())
-
-    # Print the number of rows and columns in the dataframe
-    # print(wordSentiments.shape)
-
-    # politician = "βελοπουλος ιωσηφ κυριακος"
-    # speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches where member_name = \"{politician}\"", conn)
+    secondDict = reprocessLookups(secondDict)
+    print(secondDict)
     
-    # # combining all the speeches into a large string
-    # allText = " ".join(speechesDF['speech'].tolist())
-    # print(speechesDF.shape)
-    # processSpeech(allText)
