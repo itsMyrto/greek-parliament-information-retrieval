@@ -1,7 +1,7 @@
 import pandas as pd
 import spacy
-import sqlite3
-conn = sqlite3.connect('speeches.db')
+
+FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
 
 nlp = spacy.load("el_core_news_sm")
 
@@ -26,5 +26,6 @@ if __name__ == "__main__":
     print(wordSentiments.shape)
 
     politician = "βαρβιτσιωτης ιωαννη μιλτιαδης"
-    speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches where member_name = \"{politician}\"", conn)
-    print(speechesDF.head())
+    df_ = pd.read_csv(FILEPATH)
+
+    df.loc[df['column_name'] == some_value]
