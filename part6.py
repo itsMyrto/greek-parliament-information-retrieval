@@ -108,9 +108,9 @@ def createCounts(tokens: list) -> dict:
     return counts
 
 if __name__ == "__main__":
-    # politician = "βελοπουλος ιωσηφ κυριακος"
-    politician = "γεωργιαδης αθανασιου σπυριδων-αδωνις"
-    speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 100", conn)
+    politician = "βελοπουλος ιωσηφ κυριακος"
+    # politician = "γεωργιαδης αθανασιου σπυριδων-αδωνις"
+    speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\"", conn)
     
     
     tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
