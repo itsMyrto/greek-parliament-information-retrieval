@@ -8,7 +8,7 @@ import pickle
 
 
 NUMBER_OF_DOCS = get_number_of_docs()
-FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
+FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
 
 if not os.path.isfile(FILEPATH):
     print("File ", FILEPATH, " not found. Please modify the FILEPATH parameter inside the script.")

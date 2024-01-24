@@ -4,7 +4,7 @@ from inverse_index import calculate_tf_idf_similarity
 from cleanup_myrto import word_stemming, remove_unwanted_pattern
 
 TOP_K = 20
-FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
+FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
 
 def clean_query(query: list) -> str:
     cleaned_query = ""

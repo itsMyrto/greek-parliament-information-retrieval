@@ -5,7 +5,7 @@ from assets.greek_stopwords import STOP_WORDS
 import spacy
 from greek_stemmer import stemmer
 
-FILEPATH = "/home/myrto/Downloads/Greek_Parliament_Proceedings_1989_2020.csv"
+FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
 nlp = spacy.load("el_core_news_sm")
 
 
