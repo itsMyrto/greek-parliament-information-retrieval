@@ -1,140 +1,119 @@
+import pickle
 import pandas as pd
 import spacy
 import sqlite3
 from copy import deepcopy
 from greek_stemmer import stemmer
+import re
+from time import time
+import sys
 
+# Global variables that are used often
 conn = sqlite3.connect('speeches.db')
 nlp = spacy.load("el_core_news_sm")
+unwantedCharsRegex = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
+objectiveValuesLUT = {"SUBJ": 1, "SUBJ-": 0.5, "SUBJ+": 1.5, "OBJ": -1, "BOTH": 0, "POS": 1, "NEG": -1}
 
+# https://stackoverflow.com/a/58602365/9183984
+def print_progress_bar(index, total, label):
+    n_bar = 50  # Progress bar width
+    progress = index / total
+    sys.stdout.write('\r')
+    sys.stdout.write(f"[{'=' * int(n_bar * progress):{n_bar}s}] {int(100 * progress)}%  {label}")
+    sys.stdout.flush()
 
-tagLUT = {
-    "NOUN": "NN",
-    "VERB": "VB",
-    "ADJ": "JJM",
-    "ADV": "RB",
-    "PRON": "PRP",
-    "Πρόθημα": "PRP",
-}
-
-
-def prepWordSentiments(wordSentiments: pd.DataFrame) -> dict:
-
-    def isNaN(subject):
-        return subject != subject
-
-    def cleanWord(word: str) -> str:
-        word = word.lower()
-        words = []
-        if " " in word:
-            components = word.split(" ")
-            word = components[0]
-            extraComponents = components[1].replace(" ", "").split("-")
-            words = [word] + [word[:-2] + ending for ending in extraComponents[1:]]
-            word = ",".join(words)
-        return word
-
-    def preprocessLookups(df: pd.DataFrame):
-        df['Term'] = df['Term'].map(cleanWord)
-
-    def processSpeech(speech: str) -> str:
-        wordList = speech.split(" ")[:5000]
-        doc = nlp(speech)
-        print([token.lemma_ for token in doc])
-
-    def reprocessLookups(lut: dict) -> dict:
-        for item in lut:
-            """{Term} [POS1 POS2 POS3 POS4	Subjectivity1 Subjectivity2	Subjectivity3 Subjectivity4	Polarity1 Polarity2	Polarity3 Polarity4	Anger1 Anger2 Anger3 Anger4 Disgust1 Disgust2 Disgust3 Disgust4	Fear1 Fear2	Fear3 Fear4	Happiness1 Happiness2 Happiness3 Happiness4 Sadness1 Sadness2 Sadness3 Sadness4	Surprise1 Surprise2	Surprise3 Surprise4	Aditional1 Aditional2 Aditional3 Aditional4 Comments1 Comments2	Comments3 Comments4"""
-            """ Last 8 indices are useless """
-            newItem = {}
-            lut[item] = lut[item][:-8]
-            newItem["positions"] = lut[item][:4]
-            newItem["subjectivity"] = lut[item][4:8]
-            newItem["polarity"] = lut[item][8:12]
-            newItem["anger"] = lut[item][12:16]
-            newItem["disgust"] = lut[item][16:20]
-            newItem["fear"] = lut[item][20:24]
-            newItem["happiness"] = lut[item][24:28]
-            newItem["sadness"] = lut[item][28:32]
-            newItem["surprise"] = lut[item][32:36]
-            emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"}
-            
-            badIndices = set()
-            
-            # Removing indices which contain NaN values
-            for i in range(4):
-                for key in newItem:
-                    if isNaN(newItem[key][i]):
-                        if key == "positions":
-                            badIndices.add(i)
-                        newItem[key][i] = 0       
-                
-            
-            # combining those with the same positions
-            foundPos = set()
-            i = 0
-            for i, pos in enumerate(newItem["positions"]):
-                if pos not in foundPos:
-                    foundPos.add(pos)
-                    continue
-                badIndices.add(i)
-            
-            # Dropping the bad indices
-            for key in newItem:
-                newItem[key] = [newItem[key][i] for i in range(4) if i not in badIndices]
-                
-            lut[item] = newItem 
-    
-    preprocessLookups(wordSentiments)
-    # sentimentalWordsSet = set(wordSentiments['Term'].tolist())
-    # # print(sentimentalWordsSet)
-
-    wordsDict = wordSentiments.set_index('Term').T.to_dict('list')
-    secondDict = deepcopy(wordsDict)
-    for word in wordsDict:
-        if "," in word:
-            words = word.split(",")
-            for _word in words:
-                secondDict[_word] = wordsDict[word]
-            del secondDict[word]
-    
-    
-    reprocessLookups(secondDict)
-    return secondDict
-
-
-def stemWordSentiments(wordSentiments: dict) -> dict:
-    
-    secondDict = deepcopy(wordSentiments)
-    failedList = []
-    failedPos = set()
-    for key in wordSentiments:
-        try:
-            newKey = stemmer.stem_word(key, tagLUT[wordSentiments[key]["positions"][0]]).lower()
-            del secondDict[key]
-            secondDict[newKey] = wordSentiments[key]
-        except Exception as e:
-            # print(key)
-            # print(wordSentiments[key])
-            # print(str(e))
-            failedList.append((key, wordSentiments[key]["positions"][0]))
-            failedPos.add(wordSentiments[key]["positions"][0])
-            print(str(e))
+def speechToTokens(speech: str) -> list:
+    """ Converting speech to list of tokens (stemmed word) and their tags (adjective, verb etc.)"""
+    speech_analysis = nlp(speech)
+    tokens = []
+    for token in speech_analysis:
+        """ For each token, strip it of unwanted characters, get it's tag and stem it"""
+        tag = str(token.pos_)
+        word_token = re.sub(unwantedCharsRegex, "", str(token.text))
+        stemmed_word = ""
+        
+        
+        if tag in {"SPACE", "PUNCT", "X", "DET"}:
             continue
+        elif tag == "NOUN":
+            stemmed_word = stemmer.stem_word(word_token, "NNM").lower()
+        elif tag == "VERB":
+            stemmed_word = stemmer.stem_word(word_token, "VB").lower()
+        elif tag == "ADJ" or "ADV":
+            stemmed_word = stemmer.stem_word(word_token, "JJM").lower()
+        elif tag == "PROPN":
+            stemmed_word = stemmer.stem_word(word_token, "PRP").lower()
+        else:
+            stemmed_word = stemmer.stem_word(word_token, "NNM").lower()
+
+        tokens.append((stemmed_word, tag))
+    return tokens
+
+def speechesToTokens(speechesDF: pd.DataFrame, politician: str) -> list:
+    """ Stemming each speech individually for perf and returning a list of all tokens"""
+    tokens = []
+    for index, row in speechesDF.iterrows():
+        tokens.extend(speechToTokens(row["speech"]))
+        print_progress_bar(index, len(speechesDF), f"Processing speech tokens for {politician} ")  # Fancy progress bar ✨
+    print()
+    return tokens
+
+def createCounts(tokens: list) -> dict:
+    """ Creating counts for each emotion and polarity, as well as subjectivity and objectivity """
     
-    print(failedList)
-    print(failedPos)
-    print(len(failedList))
-    print(len(wordSentiments.keys()))
-    return secondDict
+    # Import the stemmedWordSentiments.pickle file
+    stemmedWordSentiments: dict = pickle.load(open("cacheAndSaved/stemmedWordSentiments.pickle", "rb"))
+    
+    # Initialize counts in a dict as kv pairs (hmmm reminds me of spark kinda)
+    # Using dual counters for subjectivity and objectivity, as well as positivity and negativity to count them separately
+    counts = {'subjectivity-objectivity': [0, 0],
+              'positivity-negativity': [0, 0],
+              'anger': 0,
+              'disgust': 0,
+              'fear': 0,
+              'happiness': 0,
+              'sadness': 0,
+              'surprise': 0}
+    
+    for token, tag in tokens:
+        """ For each token, check if it's in the stemmedWordSentiments dict, if it is, get it's tag and add the emotion and polarity to the counts """
+        try:
+            if token not in stemmedWordSentiments:
+                continue
+            else:
+                entry = stemmedWordSentiments[token]
+                if tag not in entry["positions"]:
+                    continue
+                else:
+                    # Dealing with emotions (if only it was that easy in real life)
+                    index = entry["positions"].index(tag)
+                    for emotion in ("anger", "disgust", "fear", "happiness", "sadness", "surprise"):
+                        counts[emotion] += entry[emotion][index]
+                    
+                    # Dealing with the dual counts
+                    subjectivity = objectiveValuesLUT[entry["subjectivity"][index]] #WARNING, CAN RAISE KEYERROR
+                    positivity = objectiveValuesLUT[entry["polarity"][index]] #WARNING, CAN RAISE KEYERROR
+                    if subjectivity > 0:
+                        counts['subjectivity-objectivity'][0] += subjectivity
+                    else:
+                        counts['subjectivity-objectivity'][1] += -1*subjectivity
+                    if positivity > 0:
+                        counts['positivity-negativity'][0] += positivity
+                    else:
+                        counts['positivity-negativity'][1] += -1*positivity
+        except Exception as e:
+            # print(e)
+            continue
+                
+    return counts
 
 if __name__ == "__main__":
-    # Read the data from the tsv file
-    wordSentiments = pd.read_csv('greek_sentiment_lexicon.tsv', sep='\t')
-
-    wordSentiments: dict = prepWordSentiments(wordSentiments)
+    # politician = "βελοπουλος ιωσηφ κυριακος"
+    politician = "γεωργιαδης αθανασιου σπυριδων-αδωνις"
+    speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 100", conn)
     
-    stemmedWordSentiments: dict = stemWordSentiments(wordSentiments)
-    # print(stemmedWordSentiments)
     
-        
+    tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
+    
+    counts = createCounts(tokens)
+    print(counts)
