@@ -25,29 +25,16 @@ def print_progress_bar(index, total, label):
 
 def speechToTokens(speech: str) -> list:
     """ Converting speech to list of tokens (stemmed word) and their tags (adjective, verb etc.)"""
-    speech_analysis = nlp(speech)
+    speech_analysis = nlp(speech.lower())
     tokens = []
     for token in speech_analysis:
         """ For each token, strip it of unwanted characters, get it's tag and stem it"""
         tag = str(token.pos_)
         word_token = re.sub(unwantedCharsRegex, "", str(token.text))
-        stemmed_word = ""
         
+        if word_token:
+            tokens.append((word_token, tag))
         
-        if tag in {"SPACE", "PUNCT", "X", "DET"}:
-            continue
-        elif tag == "NOUN":
-            stemmed_word = stemmer.stem_word(word_token, "NNM").lower()
-        elif tag == "VERB":
-            stemmed_word = stemmer.stem_word(word_token, "VB").lower()
-        elif tag == "ADJ" or "ADV":
-            stemmed_word = stemmer.stem_word(word_token, "JJM").lower()
-        elif tag == "PROPN":
-            stemmed_word = stemmer.stem_word(word_token, "PRP").lower()
-        else:
-            stemmed_word = stemmer.stem_word(word_token, "NNM").lower()
-
-        tokens.append((stemmed_word, tag))
     return tokens
 
 def speechesToTokens(speechesDF: pd.DataFrame, politician: str) -> list:
@@ -63,7 +50,8 @@ def createCounts(tokens: list) -> dict:
     """ Creating counts for each emotion and polarity, as well as subjectivity and objectivity """
     
     # Import the stemmedWordSentiments.pickle file
-    stemmedWordSentiments: dict = pickle.load(open("cacheAndSaved/stemmedWordSentiments.pickle", "rb"))
+    stemmedWordSentiments: dict = pickle.load(open("cacheAndSaved/stemmedWordSentiments_unstemmed.pickle", "rb"))
+    # print(stemmedWordSentiments)
     
     # Initialize counts in a dict as kv pairs (hmmm reminds me of spark kinda)
     # Using dual counters for subjectivity and objectivity, as well as positivity and negativity to count them separately
@@ -116,9 +104,11 @@ if __name__ == "__main__":
     countsList = []
     
     for politician in politicians:
-        speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 200", conn)
+        speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 100", conn)
         
         tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
+        tokens.append(("ωμή", "ADJ"))
+        print(tokens[-10:])
         
         counts = createCounts(tokens)
         counts["member_name"] = politician.title()
