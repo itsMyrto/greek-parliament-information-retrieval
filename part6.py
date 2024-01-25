@@ -7,6 +7,7 @@ from greek_stemmer import stemmer
 import re
 from time import time
 import sys
+from plot import displayPlots
 
 # Global variables that are used often
 conn = sqlite3.connect('speeches.db')
@@ -68,12 +69,13 @@ def createCounts(tokens: list) -> dict:
     # Using dual counters for subjectivity and objectivity, as well as positivity and negativity to count them separately
     counts = {'subjectivity-objectivity': [0, 0],
               'positivity-negativity': [0, 0],
+              'emotions': {
               'anger': 0,
               'disgust': 0,
               'fear': 0,
               'happiness': 0,
               'sadness': 0,
-              'surprise': 0}
+              'surprise': 0}}
     
     for token, tag in tokens:
         """ For each token, check if it's in the stemmedWordSentiments dict, if it is, get it's tag and add the emotion and polarity to the counts """
@@ -88,7 +90,7 @@ def createCounts(tokens: list) -> dict:
                     # Dealing with emotions (if only it was that easy in real life)
                     index = entry["positions"].index(tag)
                     for emotion in ("anger", "disgust", "fear", "happiness", "sadness", "surprise"):
-                        counts[emotion] += entry[emotion][index]
+                        counts["emotions"][emotion] += entry[emotion][index]
                     
                     # Dealing with the dual counts
                     subjectivity = objectiveValuesLUT[entry["subjectivity"][index]] #WARNING, CAN RAISE KEYERROR
@@ -107,13 +109,19 @@ def createCounts(tokens: list) -> dict:
                 
     return counts
 
+
 if __name__ == "__main__":
-    politician = "βελοπουλος ιωσηφ κυριακος"
+    politicians = ["βελοπουλος ιωσηφ κυριακος", "γεωργιαδης αθανασιου σπυριδων-αδωνις"]
     # politician = "γεωργιαδης αθανασιου σπυριδων-αδωνις"
-    speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\"", conn)
+    countsList = []
     
-    
-    tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
-    
-    counts = createCounts(tokens)
-    print(counts)
+    for politician in politicians:
+        speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\"", conn)
+        
+        tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
+        
+        counts = createCounts(tokens)
+        counts["member_name"] = politician.title()
+        countsList.append(counts)
+    print(countsList)
+    displayPlots(countsList)

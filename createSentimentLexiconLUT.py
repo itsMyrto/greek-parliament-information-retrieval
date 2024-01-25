@@ -127,7 +127,7 @@ def stemWordSentiments(wordSentiments: dict) -> dict:
 
 if __name__ == "__main__":
     # Read the data from the tsv file
-    wordSentiments = pd.read_csv('greek_sentiment_lexicon.tsv', sep='\t')
+    wordSentiments = pd.read_csv('cacheAndSaved/greek_sentiment_lexicon.tsv', sep='\t')
 
     # Preprocess the word sentiments
     wordSentiments: dict = prepWordSentiments(wordSentiments)
