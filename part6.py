@@ -76,6 +76,11 @@ def createCounts(tokens: list) -> dict:
               'happiness': 0,
               'sadness': 0,
               'surprise': 0}}
+
+    unique_words_for_each_emotion = [0, 0, 0, 0, 0, 0]  # Unique words that contribute to an emotion with the maximum score
+    count_all_words = 0
+    unique_words = {}  # Unique words and their frequency
+    word_for_emotions = [0, 0, 0, 0, 0, 0]  # Words that contribute to an emotion with the maximum score (it counts all occurrences)
     
     for token, tag in tokens:
         """ For each token, check if it's in the stemmedWordSentiments dict, if it is, get it's tag and add the emotion and polarity to the counts """
@@ -87,11 +92,45 @@ def createCounts(tokens: list) -> dict:
                 if tag not in entry["positions"]:
                     continue
                 else:
+
+                    count_all_words += 1
+
                     # Dealing with emotions (if only it was that easy in real life)
                     index = entry["positions"].index(tag)
+
+                    # Skipping neutral words
+                    if entry["anger"][index] == entry["disgust"][index] == entry["fear"][index] == entry["happiness"][index] == entry["sadness"][index] == entry["surprise"][index] == 0:
+                        continue
+
+                    """Checking if this token is already used from the politician and then increasing its frequency"""
+                    if token not in unique_words:
+                        unique_words[token] = 1
+                    else:
+                        freq = unique_words[token]
+                        freq += 1
+                        unique_words[token] = freq
+
+                    """ Finding the emotion/emotions that the token contributes most """
+                    maximum = 0
                     for emotion in ("anger", "disgust", "fear", "happiness", "sadness", "surprise"):
+                        if entry[emotion][index] > maximum:
+                            maximum = entry[emotion][index]
                         counts["emotions"][emotion] += entry[emotion][index]
-                    
+
+                    first_occurrence = False
+                    if unique_words[token] == 1:
+                        first_occurrence = True
+
+                    """ Increasing the frequency of the emotion/emotions where the token contributes with maximum """
+                    ind = 0
+                    for emotion in ("anger", "disgust", "fear", "happiness", "sadness", "surprise"):
+                        if entry[emotion][index] == maximum:
+                            unique_words_for_each_emotion[ind] += 1
+                            if first_occurrence:
+                                word_for_emotions[ind] += 1
+                        ind += 1
+
+
                     # Dealing with the dual counts
                     subjectivity = objectiveValuesLUT[entry["subjectivity"][index]] #WARNING, CAN RAISE KEYERROR
                     positivity = objectiveValuesLUT[entry["polarity"][index]] #WARNING, CAN RAISE KEYERROR
@@ -106,13 +145,19 @@ def createCounts(tokens: list) -> dict:
         except Exception as e:
             # print(e)
             continue
-                
+
+    # Normalization
+    ind = 0
+    for emotion in ("anger", "disgust", "fear", "happiness", "sadness", "surprise"):
+        counts["emotions"][emotion] *= (word_for_emotions[ind] / unique_words_for_each_emotion[ind])
+        counts["emotions"][emotion] /= (count_all_words / 100)
+        ind += 1
     return counts
 
 
 if __name__ == "__main__":
-    politicians = ["βελοπουλος ιωσηφ κυριακος"]#, "κουτσουμπας αποστολου δημητριος"]
-    # politician = "γεωργιαδης αθανασιου σπυριδων-αδωνις"
+    politicians = ["βελοπουλος ιωσηφ κυριακος", "βαρουφακης γεωργιου γιανης",]#, "κουτσουμπας αποστολου δημητριος"]
+    # politicians = ["τσιπρας παυλου αλεξιος", "γεωργιαδης αθανασιου σπυριδων-αδωνις", "βαρουφακης γεωργιου γιανης", "κουτσουμπας αποστολου δημητριος", "βελοπουλος ιωσηφ κυριακος", "μητσοτακης κωνσταντινου κυριακος"]
     countsList = []
     
     for politician in politicians:
