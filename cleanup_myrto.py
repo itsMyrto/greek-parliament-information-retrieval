@@ -11,6 +11,12 @@ nlp = spacy.load("el_core_news_sm")
 
 # please run this: python -m spacy download el_core_news_sm==3.7.1
 def word_stemming(word: str) -> str:
+    """Stem a word based on its part of speech.
+    Parameters:
+        word (str): Input word.
+    Returns:
+        str: Stemmed word.
+    """
     doc = nlp(word)
     tag = doc[0].pos_
     if tag == "NOUN":
@@ -26,6 +32,12 @@ def word_stemming(word: str) -> str:
 
 
 def remove_unwanted_pattern(word: str) -> str:
+    """Remove unwanted patterns from a word.
+    Parameters:
+        word (str): Input word.
+    Returns:
+        str: Cleaned word.
+    """
     unwanted_pattern = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
     cleaned_word = re.sub(unwanted_pattern, '', word)
     if (cleaned_word == " ") or (cleaned_word.lower() in STOP_WORDS) or (len(cleaned_word) == 1) or (
@@ -35,6 +47,8 @@ def remove_unwanted_pattern(word: str) -> str:
 
 
 def clean_dataset():
+    """Clean the dataset and save the cleaned data to a CSV file."""
+
     dictionary = {}
     cleaned_data = []
     document_id = 0

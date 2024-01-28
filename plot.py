@@ -3,7 +3,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 def radar_chart(emotion_scores, emotions):
-    """ Display a radar chart """
+    """
+    Display a radar chart representing emotions for each person.
+    Parameters:
+        emotion_scores (list of dicts): Emotion scores for each person.
+        emotions (list): List of emotion categories.
+    """
     
     fig = go.Figure()
     
@@ -32,7 +37,11 @@ def radar_chart(emotion_scores, emotions):
     
 
 def bar_chart(positivity_scores):
-
+    """
+    Display a grouped bar chart showing positivity and negativity scores for each politician.
+    Parameters:
+    positivity_scores (dict): Dictionary containing positivity and negativity scores for each politician.
+    """
     
     politicians = []
     positive_scores = []
@@ -74,18 +83,7 @@ def bar_chart(positivity_scores):
 
 def displayPlots(counts: list):
     """ Display the plots """
-    """Schema: 
-    list of dicts [{'subjectivity-objectivity': [558.0, 0],
-    'positivity-negativity': [246, 649],
-    'emotions: {
-    'anger': 1296.0,
-    'disgust': 1378.0,
-    'fear': 1193.0,
-    'happiness': 1830.0,
-    'sadness': 1114.0,
-    'surprise': 2105.0},
-    'member_name': 'Βελοπουλος Ιωσηφ Κυριακος'}]"""
-    
+
     positivitiesDict = {
         item["member_name"]: (item["positivity-negativity"][0], item["positivity-negativity"][1]) for item in counts
     }

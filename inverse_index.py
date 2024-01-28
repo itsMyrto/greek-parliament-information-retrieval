@@ -15,7 +15,10 @@ def get_number_of_docs():
     return len(df)
 
 def create_inverse_index_catalogue():
-
+    """
+    Create an inverse index catalogue and save it as a pickle file.
+    The inverse index catalogue maps words to a list of documents containing the word and their term frequency.
+    """
     inverse_index_catalogue = {}
 
     for index, row in df.iterrows():
@@ -49,6 +52,13 @@ def create_inverse_index_catalogue():
     return
 
 def calculate_tf_idf_similarity(cleaned_query: list) -> list:
+    """
+    Calculate TF-IDF similarity scores between the query and documents.
+    Parameters:
+        cleaned_query (list): List of cleaned and stemmed words in the query.
+    Returns:
+        list: List of TF-IDF similarity scores for each document.
+    """
 
     if not os.path.isfile("inverse_index.pkl"):
         create_inverse_index_catalogue()

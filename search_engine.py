@@ -7,6 +7,13 @@ TOP_K = 20
 FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
 
 def clean_query(query: list) -> str:
+    """
+    Clean the query by removing unwanted patterns and stemming words.
+    Parameters:
+        query (list): List of words in the query.
+    Returns:
+        str: Cleaned and stemmed query as a string.
+    """
     cleaned_query = ""
 
     for word in query:
@@ -37,6 +44,14 @@ def find_top_k(cleaned_query: list) -> list:
     return indexes
 
 def search_query(query):
+    """
+    Perform a search query and retrieve relevant results.
+    Parameters:
+        query (str): User input query.
+    Returns:
+        list: List of dictionaries containing relevant search results.
+    """
+
     query = query.split(" ")
     cleaned_query = clean_query(query)[1:].split(" ")
     print(cleaned_query)
