@@ -149,7 +149,7 @@ def getKeywordQueryByDate(conn: sqlite3.Connection, mode: str = "speeches", enti
     
     if mode == "members":
         # Getting the member speeches where the member is the entity
-        df = pd.read_sql_query(f"SELECT * FROM processed_speeches WHERE member_name = {entity.lower()}", conn)
+        df = pd.read_sql_query(f"SELECT * FROM processed_speeches WHERE member_name = \"{entity.lower()}\"", conn)
         # Changing dates to datetime objects so we can group by year
         df["sitting_date"] = pd.to_datetime(df["sitting_date"])
         df = df.groupby(df["sitting_date"].dt.year)
@@ -201,6 +201,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="console", help="Output results to a file (defaults to console)")
     
     args = parser.parse_args()
+    
     
     if args.initialize_database:
         if args.max_rows:

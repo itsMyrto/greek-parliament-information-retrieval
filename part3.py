@@ -1,30 +1,17 @@
 import pandas as pd
 import sqlite3
-import re
 import numpy as np
-from assets.stopwords import STOPWORDS
 import pickle
 from time import time
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
-
-stopwords = set(STOPWORDS)
-
-
-def makeDb(conn: sqlite3.Connection):
-    # Read 10000 rows from the csv file
-    df = pd.read_csv("Greek_Parliament_Proceedings_1989_2020.csv", nrows=10000)
-    # Drop the rows where the speaker is unknown. The speaker is found in the `member_id` column
-    df = df.dropna(how='any')
-
-    # Save in a sql database the speeches of the greek parliament
-    df.to_sql("speeches", con=conn, if_exists='replace', index=True)
+import helpers.databaseCommons as dbCommons
+import argparse
 
 
 def makeGroupedDB(conn: sqlite3.Connection):
     df = pd.read_sql_query("SELECT * FROM processed_speeches", conn)
     df.groupby("member_name")["speech"].apply(lambda x: " ".join(x)).to_sql("ProcessedSpeechesPerMember", con=conn, if_exists='replace', index=True)
-
 
 
 def createInverseIndex(conn: sqlite3.Connection):
@@ -43,19 +30,19 @@ def createInverseIndex(conn: sqlite3.Connection):
                 inverse_index_catalogue[term].append((index, 1))
             else:
                 inverse_index_catalogue[term][-1] = (index, inverse_index_catalogue[term][-1][1] + 1)
-        if index % 100 == 0:
-            print(f"Processed {index} documents")
+        if index % 333 == 0:
+            print(f"Processed {index} members")
             
-    print(f"Building inverse index took {time() - start} seconds")
+    print(f"Building inverted index took {time() - start} seconds")
     # Save the inverse index catalogue in a file with pickle
-    with open("inverse_index_catalogue_for_part3.pickle", "wb") as f:
+    with open("cacheAndSaved/inverse_index_catalogue_for_part3.pickle", "wb") as f:
         pickle.dump(inverse_index_catalogue, f)
     
     
 
 def createTWMatrix(conn: sqlite3.Connection):
     start = time()
-    inverse_index_catalogue = pickle.load(open("inverse_index_catalogue_for_part3.pickle", "rb"))
+    inverse_index_catalogue = pickle.load(open("cacheAndSaved/inverse_index_catalogue_for_part3.pickle", "rb"))
     df = pd.read_sql_query("SELECT * FROM ProcessedSpeechesPerMember", conn)
     print(f"Reading from pickle took {time() - start} seconds")
     
@@ -66,16 +53,16 @@ def createTWMatrix(conn: sqlite3.Connection):
             twMatrix[doc_id][index] = tf
         if index % 333000 == 0:
             print(f"Processed {index} terms")
-    print(f"Building term-document matrix took {time() - start} seconds")
+    print(f"Building term-member matrix took {time() - start} seconds")
     twMatrix_sparce = csr_matrix(twMatrix)
     
-    with open("twMatrix_sparce.pickle", "wb") as f:
+    with open("cacheAndSaved/twMatrix_sparce.pickle", "wb") as f:
         pickle.dump(twMatrix_sparce, f)
 
 
 def createSVDMatrix(conn: sqlite3.Connection):
     start = time()
-    twMatrix_sparce = pickle.load(open("twMatrix_sparce.pickle", "rb"))
+    twMatrix_sparce = pickle.load(open("cacheAndSaved/twMatrix_sparce.pickle", "rb"))
     print(f"Reading from pickle took {time() - start} seconds")
     
     start = time()
@@ -83,7 +70,7 @@ def createSVDMatrix(conn: sqlite3.Connection):
     print(U.shape, s.shape, V.shape)
     print(f"SVD took {time() - start} seconds")
     
-    with open("U_s_V.pickle", "wb") as f:
+    with open("cacheAndSaved/U_s_V.pickle", "wb") as f:
         pickle.dump((U, s, V), f)
 
 
@@ -91,10 +78,10 @@ def cosineMatMul(A: np.matrix, B: np.matrix) -> np.matrix:
     return np.matmul(A, B.T) / (np.linalg.norm(A, axis=1) * np.linalg.norm(B, axis=1)).reshape(-1, 1)
 
 
-def findTopKSimilarMembers(conn: sqlite3.Connection, k: int):
+def findTopKSimilarMembers(conn: sqlite3.Connection, k: int, output: str):
     # Reading the SVD decomposition from pickle
     start = time()
-    U, s, V = pickle.load(open("U_s_V.pickle", "rb"))
+    U, s, V = pickle.load(open("cacheAndSaved/U_s_V.pickle", "rb"))
     print(f"Reading from pickle took {time() - start} seconds")
     
     # Reading the speeches per member dataframe from the db
@@ -119,25 +106,73 @@ def findTopKSimilarMembers(conn: sqlite3.Connection, k: int):
     
     # Finding the top k pairs of members
     topKPairs = np.unravel_index(np.argsort(memberSimilarityMatrix.ravel())[-k:], memberSimilarityMatrix.shape)
-    listOfPairs = list(zip(topKPairs[0], topKPairs[1]))
-    for pair in listOfPairs:
-        print(f'"{df.iloc[pair[0]]["member_name"]}", "{df.iloc[pair[1]]["member_name"]}"')
+    listOfPairs = list(zip(topKPairs[0], topKPairs[1]))[::-1]
+    if output != "console":
+        with open(output, "w", encoding="utf-8") as f:
+            for i, pair in enumerate(listOfPairs):
+                f.write(f'{i+1}: "{df.iloc[pair[0]]["member_name"]}" μαζί με "{df.iloc[pair[1]]["member_name"]}"\n')
+    else:
+        for i, pair in enumerate(listOfPairs):
+            print(f'{i+1}: "{df.iloc[pair[0]]["member_name"]}" μαζί με "{df.iloc[pair[1]]["member_name"]}"')
     
     print(f"\nFinding top {k} similar members took {time() - start} seconds")
     
 
-if __name__ == "__main__":
+def preFlightCheck():
+    # Create the database
+    from os.path import isfile, getsize
+    # Files to check: speeches.db, cacheAndSaved/inverse_index_catalogue_for_part3.pickle, cacheAndSaved/twMatrix_sparce.pickle, cacheAndSaved/U_s_V.pickle
+    
+    # Check if initial db has been created
+    if not isfile("speeches.db"):
+        conn = sqlite3.connect('speeches.db')
+        print("Generating speeches.db for the first time, this may take 2-3 mins")
+        dbCommons.makeDb(conn)
+        conn.close()
     conn = sqlite3.connect('speeches.db')
     
-    # TODO: Change so it uses Myrto's cleandata instead of mine
     
-    # makeDb(conn)
-    # makeGroupedDB(conn)
-    # makeShinglesDB(conn)
-    # createInverseIndex(conn)
-    # createTWMatrix(conn)
-    # createSVDMatrix(conn)
-    findTopKSimilarMembers(conn, 5)
+    # Check if table ProcessedSpeechesPerMember has been created in speeches.db
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='processed_speeches';").fetchone() is None:
+        print("Generating processed_speeches table for the first time, this shall finish shortly")
+        dbCommons.makePreProcessedDB(conn)
+    
+    # Check if table ProcessedSpeechesPerMember has been created in speeches.db
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ProcessedSpeechesPerMember';").fetchone() is None:
+        print("Generating ProcessedSpeechesPerMember table for the first time, this shall finish shortly")
+        makeGroupedDB(conn)
+    
+    # Check if cacheAndSaved/inverse_index_catalogue_for_part3.pickle has been created
+    if not isfile("cacheAndSaved/inverse_index_catalogue_for_part3.pickle"):
+        print("Generating inverse_index_catalogue_for_part3.pickle for the first time, this shall finish shortly")
+        createInverseIndex(conn)
+    
+    # Check if cacheAndSaved/twMatrix_sparce.pickle has been created
+    if not isfile("cacheAndSaved/twMatrix_sparce.pickle"):
+        print("Generating twMatrix_sparce.pickle for the first time, this shall finish shortly")
+        createTWMatrix(conn)
+    
+    # Check if cacheAndSaved/U_s_V.pickle has been created
+    if not isfile("cacheAndSaved/U_s_V.pickle"):
+        print("Generating U_s_V.pickle for the first time, this shall finish shortly")
+        createSVDMatrix(conn)
+    
+    conn.close()
+    
+
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description="Command-line utility for the members similarities part.")
+    parser.add_argument("--top-k", type=int, default=5, help="K for the top k similar members (defaults to 5)")
+    
+    parser.add_argument("--output", type=str, default="console", help="Output results to a file (defaults to console)")
+    
+    args = parser.parse_args()
+    
+    preFlightCheck()
+    conn = sqlite3.connect('speeches.db')
+    findTopKSimilarMembers(conn, args.top_k, args.output)
     
     
 """

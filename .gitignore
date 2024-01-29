@@ -10,3 +10,8 @@ inverse_index.pkl
 varoufakis.csv
 speeches.db
 Greek_Parliament_Proceedings_1989_2020.csv
+speeches_.db
+cacheAndSaved/inverse_index_catalogue_for_part3.pickle
+cacheAndSaved/twMatrix_sparce.pickle
+cacheAndSaved/U_s_V.pickle
+cacheAndSaved/inverse_index.pkl
