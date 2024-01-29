@@ -6,10 +6,14 @@ import spacy
 from greek_stemmer import stemmer
 
 FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
-nlp = spacy.load("el_core_news_sm")
+try:
+    nlp = spacy.load("el_core_news_sm")
+except Exception as e:
+    print("Please run this: python -m spacy download el_core_news_sm==3.7.0")
+    exit(1)
 
 
-# please run this: python -m spacy download el_core_news_sm==3.7.1
+# please run this: python -m spacy download el_core_news_sm==3.7.0
 def word_stemming(word: str) -> str:
     """Stem a word based on its part of speech.
     Parameters:

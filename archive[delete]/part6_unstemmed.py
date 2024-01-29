@@ -7,7 +7,7 @@ from greek_stemmer import stemmer
 import re
 from time import time
 import sys
-from plot import displayPlots
+from helpers.plot import displayPlots
 
 # Global variables that are used often
 conn = sqlite3.connect('speeches.db')

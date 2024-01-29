@@ -5,8 +5,7 @@ import numpy as np
 from assets.stopwords import STOPWORDS
 import sys
 import argparse
-
-
+import helpers.databaseCommons as dbCommons
 
 stopwords = set(STOPWORDS)
 
@@ -65,41 +64,6 @@ def simplify(x: str):
 
 def blobify(x: str):
     return [_ for _ in simplify(x).split() if len(_) > 2 and _ not in stopwords]
-
-
-def makeDb(conn: sqlite3.Connection, max_rows: int = None):
-    # Read 10000 rows from the csv file
-    if max_rows:
-        df = pd.read_csv("Greek_Parliament_Proceedings_1989_2020.csv", nrows=max_rows)
-    else:
-        df = pd.read_csv("Greek_Parliament_Proceedings_1989_2020.csv")
-    # Drop the rows where the speaker is unknown. The speaker is found in the `member_id` column
-    df = df.dropna(subset=['member_name'])
-    df["sitting_date"] = pd.to_datetime(df["sitting_date"], format="%d/%m/%Y")
-
-    # Save in a sql database the speeches of the greek parliament
-    df.to_sql("speeches", con=conn, if_exists='replace', index=True)
-
-
-def makePreProcessedDB(conn: sqlite3.Connection):
-    # Getting the unprocessed speeches
-    df = pd.read_sql_query("SELECT * FROM speeches", conn)
-    # Dropping unnecessary columns
-    df.drop(columns=["parliamentary_period", "member_region", "parliamentary_session",
-                     "parliamentary_sitting", "government", "roles", "member_gender"], inplace=True)
-
-    # Maintaining relation to the original dataframe
-    df.rename(columns={"index": "ID_0"}, inplace=True)
-
-
-    # Performing preprocessing and keeping the length of the speech which will be useful later
-    df["speech"] = df["speech"].apply(lambda x: " ".join(blobify(x)))
-    df["speechLength"] = df["speech"].apply(lambda x: len(x.split()))
-
-    # Some speeches are irrelevant (length = 0) so we drop them
-    df.drop(df.loc[df['speechLength'] == 0].index, inplace=True)
-
-    df.to_sql("processed_speeches", con=conn, if_exists='replace', index=True)
 
 
 def makeKeywordsDB(conn: sqlite3.Connection):
@@ -166,7 +130,7 @@ def getKeywordQueryByDate(conn: sqlite3.Connection, mode: str = "speeches", enti
     
     if mode == "parties":
         # Getting the party speeches where the party is the entity
-        df = pd.read_sql_query(f"SELECT * FROM processed_speeches WHERE political_party = {entity.lower()}", conn)
+        df = pd.read_sql_query(f"SELECT * FROM processed_speeches WHERE political_party = \"{entity.lower()}\"", conn)
         # Changing dates to datetime objects so we can group by year
         df["sitting_date"] = pd.to_datetime(df["sitting_date"])
         df = df.groupby(df["sitting_date"].dt.year)
@@ -183,11 +147,28 @@ def getKeywordQueryByDate(conn: sqlite3.Connection, mode: str = "speeches", enti
 
 
 
-if __name__ == "__main__" and False:
-    with sqlite3.connect('speeches.db') as conn:
-    #    makeKeywordsDB(conn)
-        getKeywordQueryByDate(conn, mode="speeches")
-
+def preFlightCheck():
+    # Create the database
+    from os.path import isfile, getsize
+    # Files to check: speeches.db, cacheAndSaved/inverse_index_catalogue_for_part3.pickle, cacheAndSaved/twMatrix_sparce.pickle, cacheAndSaved/U_s_V.pickle
+    
+    # Check if initial db has been created
+    if not isfile("speeches.db"):
+        conn = sqlite3.connect('speeches.db')
+        print("Generating speeches.db for the first time, this may take 2-3 mins")
+        dbCommons.makeDb(conn)
+        conn.close()
+    conn = sqlite3.connect('speeches.db')
+    
+    
+    # Check if table ProcessedSpeechesPerMember has been created in speeches.db
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='processed_speeches';").fetchone() is None:
+        print("Generating processed_speeches table for the first time, this shall finish shortly")
+        dbCommons.makePreProcessedDB(conn)
+    
+    
+    
+    conn.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Command-line utility for database initialization and keyword processing.")
@@ -197,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--gather-politician-keywords", type=str, help="Gather keywords for a politician by providing the politician's name")
     parser.add_argument("--gather-party-keywords", type=str, help="Gather keywords for a party by providing the party's name")
     parser.add_argument("--gather-total-keywords", action="store_true", help="Gather total keywords")
+    parser.add_argument("--demo", action="store_true", help="Run the demo")
     
     parser.add_argument("--output", type=str, default="console", help="Output results to a file (defaults to console)")
     
@@ -209,8 +191,10 @@ if __name__ == "__main__":
         else:
             max_rows = None
         with sqlite3.connect('speeches.db') as conn:
-            makeDb(conn)
-            makePreProcessedDB(conn)
+            dbCommons.makeDb(conn, max_rows)
+            dbCommons.makePreProcessedDB(conn)
+    else:
+        preFlightCheck()
     if args.process_keywords:
         with sqlite3.connect('speeches.db') as conn:
             conn = sqlite3.connect('speeches.db')
@@ -224,4 +208,13 @@ if __name__ == "__main__":
     if args.gather_total_keywords:
         with sqlite3.connect('speeches.db') as conn:
             getKeywordQueryByDate(conn, mode="speeches", output=args.output)
-        
+    if args.demo:
+        preFlightCheck()
+        with sqlite3.connect('speeches.db') as conn:
+            print("Running demo...")
+            
+            print("Demo 1: Getting keywords for all speeches by member for μητσοτακης κωνσταντινου κυριακος")
+            getKeywordQueryByDate(conn, mode="members", entity="μητσοτακης κωνσταντινου κυριακος", output=args.output)
+            
+            print("Demo 2: Getting keywords for all speeches by party for νεα δημοκρατια")
+            getKeywordQueryByDate(conn, mode="parties", entity="νεα δημοκρατια", output=args.output)

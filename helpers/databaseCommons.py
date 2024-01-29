@@ -5,7 +5,7 @@ import numpy as np
 from assets.stopwords import STOPWORDS
 import pickle
 from time import time
-
+FILENAME = "Greek_Parliament_Proceedings_1989_2020.csv"
 stopwords = set(STOPWORDS)
 unwanted_pattern = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
 accents_translation_table = str.maketrans(
@@ -24,9 +24,9 @@ def blobify(x: str):
 def makeDb(conn: sqlite3.Connection, max_rows: int = None):
     # Read 10000 rows from the csv file
     if max_rows:
-        df = pd.read_csv("Greek_Parliament_Proceedings_1989_2020.csv", nrows=max_rows)
+        df = pd.read_csv(FILENAME, nrows=max_rows)
     else:
-        df = pd.read_csv("Greek_Parliament_Proceedings_1989_2020.csv")
+        df = pd.read_csv(FILENAME)
     # Drop the rows where the speaker is unknown. The speaker is found in the `member_id` column
     df = df.dropna(subset=['member_name'])
     df["sitting_date"] = pd.to_datetime(df["sitting_date"], format="%d/%m/%Y")

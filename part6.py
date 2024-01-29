@@ -7,11 +7,16 @@ from greek_stemmer import stemmer
 import re
 from time import time
 import sys
-from plot import displayPlots
+from helpers.plot import displayPlots
+import helpers.databaseCommons as dbCommons
 
 # Global variables that are used often
 conn = sqlite3.connect('speeches.db')
-nlp = spacy.load("el_core_news_sm")
+try:
+    nlp = spacy.load("el_core_news_sm")
+except Exception as e:
+    print("Please run this: python -m spacy download el_core_news_sm==3.7.0")
+    exit(1)
 unwantedCharsRegex = re.compile(r'[0-9@#$%^&*()-_=+[\]{};:\'",.<>/?\\|`~!]')
 objectiveValuesLUT = {"SUBJ": 1, "SUBJ-": 0.5, "SUBJ+": 1.5, "OBJ": -1, "BOTH": 0, "POS": 1, "NEG": -1}
 
@@ -155,10 +160,28 @@ def createCounts(tokens: list) -> dict:
     return counts
 
 
+def preFlightCheck():
+    # Create the database
+    from os.path import isfile, getsize
+    # Files to check: speeches.db, cacheAndSaved/inverse_index_catalogue_for_part3.pickle, cacheAndSaved/twMatrix_sparce.pickle, cacheAndSaved/U_s_V.pickle
+    
+    # Check if initial db has been created
+    if not isfile("speeches.db"):
+        conn = sqlite3.connect('speeches.db')
+        print("Generating speeches.db for the first time, this may take 2-3 mins")
+        dbCommons.makeDb(conn)
+        conn.close()
+    conn = sqlite3.connect('speeches.db')
+    
+        
+
 if __name__ == "__main__":
+    preFlightCheck()
+    
     politicians = ["βελοπουλος ιωσηφ κυριακος", "βαρουφακης γεωργιου γιανης",]#, "κουτσουμπας αποστολου δημητριος"]
     politicians = ["τσιπρας παυλου αλεξιος", "γεωργιαδης αθανασιου σπυριδων-αδωνις", "βαρουφακης γεωργιου γιανης", "κουτσουμπας αποστολου δημητριος", "βελοπουλος ιωσηφ κυριακος", "μητσοτακης κωνσταντινου κυριακος"]
     countsList = []
+    
     
     for politician in politicians:
         speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 200", conn)
@@ -168,5 +191,5 @@ if __name__ == "__main__":
         counts = createCounts(tokens)
         counts["member_name"] = politician.title()
         countsList.append(counts)
-    print(countsList)
+    # print(countsList)
     displayPlots(countsList)
