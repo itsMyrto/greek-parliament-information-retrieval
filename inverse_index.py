@@ -2,12 +2,12 @@ import os
 import pandas as pd
 import math
 import pickle
-import cleanup_myrto
+import dataCleanupPart1
 
 
 if not os.path.isfile("cleaned_data.csv"):
     print("Creating cleaned dataset...")
-    cleanup_myrto.clean_dataset()
+    dataCleanupPart1.clean_dataset()
 
 df = pd.read_csv("cleaned_data.csv")
 
