@@ -1,7 +1,7 @@
 /Greek_Parliament_Proceedings_1989_2020.csv
 venv
 __pycache__
-cleaned.csv
+cleaned_data.csv
 speeches.db
 inverse_index_catalogue_for_part3.pickle
 twMatrix_sparce.pickle

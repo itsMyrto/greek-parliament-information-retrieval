@@ -32,10 +32,9 @@ def create_inverse_index_catalogue():
             found = False
             if word in inverse_index_catalogue:
                 word_list = inverse_index_catalogue.get(word)
-                for i in range(1, len(word_list)):
-                    if word_list[i][0] == doc_id:
-                        found = True
-                        word_list[i][1] += 1
+                if word_list[len(word_list) - 1][0] == doc_id:
+                    word_list[len(word_list) - 1][1] += 1
+                    found = True
                 if not found:
                     word_list[0] += 1
                     word_list.append([doc_id, 1])
@@ -43,6 +42,10 @@ def create_inverse_index_catalogue():
             else:
                 word_list = [1, [doc_id, 1]]
                 inverse_index_catalogue[word] = word_list
+
+        if index % 100000 == 0:
+            print(f"Processed {index} members")
+            # print(inverse_index_catalogue)
 
     print("I am done")
 
@@ -69,6 +72,7 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
 
     print("Opened and continuing the work")
 
+    print(len(inverse_index_catalogue))
 
     NUMBER_OF_DOCS = get_number_of_docs()
     accumulators = [0] * NUMBER_OF_DOCS
@@ -108,3 +112,4 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
         accumulators[i] = accumulators[i] / math.sqrt(ld[i])
     return accumulators
 
+create_inverse_index_catalogue()
