@@ -29,22 +29,18 @@ def create_inverse_index_catalogue():
         doc_id = row["doc_id"]
 
         for word in speech:
-            found = False
             if word in inverse_index_catalogue:
                 word_list = inverse_index_catalogue.get(word)
-                if word_list[len(word_list) - 1][0] == doc_id:
-                    word_list[len(word_list) - 1][1] += 1
-                    found = True
-                if not found:
-                    word_list[0] += 1
-                    word_list.append([doc_id, 1])
+                if doc_id in word_list:
+                    word_list[doc_id] += 1
+                else:
+                    word_list[doc_id] = 1
                 inverse_index_catalogue[word] = word_list
             else:
-                word_list = [1, [doc_id, 1]]
-                inverse_index_catalogue[word] = word_list
+                inverse_index_catalogue[word] = {doc_id: 1}
 
         if index % 100000 == 0:
-            print(f"Processed {index} members")
+            print(f"Processed {index} documents")
             # print(inverse_index_catalogue)
 
     print("I am done")
@@ -78,19 +74,23 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
     NUMBER_OF_DOCS = get_number_of_docs()
     accumulators = [0] * NUMBER_OF_DOCS
     ld = [0] * NUMBER_OF_DOCS
-
+    print("Initialized accumulators")
+    
     for word in cleaned_query:
 
         if word in inverse_index_catalogue:
             word_list = inverse_index_catalogue[word]
-            nt = word_list[0]
+            
+            nt = len(word_list)
             idft = math.log(1 + (NUMBER_OF_DOCS / nt))
-            for i in range(1, len(word_list)):
-                tf = 1 + math.log(word_list[i][1])
-                accumulators[word_list[i][0]] += idft * tf
+            for doc_id, tf in word_list.items():
+                tf = 1 + math.log(tf)
+                accumulators[doc_id] += idft * tf
         else:
             continue
+    
     for i in range(0, NUMBER_OF_DOCS):
+            
         if accumulators[i] == 0:
             continue
         else:
@@ -104,11 +104,14 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
 
             for word in speech:
                 word_list = inverse_index_catalogue[word]
-                nt = word_list[0]
+                
+                nt = len(word_list)
                 idft = math.log(1 + (NUMBER_OF_DOCS / nt))
-                for j in range(1, len(word_list)):
-                    if word_list[j][0] == i:
-                        tf = 1 + math.log(word_list[j][1])
-                        ld[i] += (tf*idft)**2
+                tf = 1 + math.log(word_list[i])
+                ld[i] += (tf*idft)**2
         accumulators[i] = accumulators[i] / math.sqrt(ld[i])
+        
     return accumulators
+
+if __name__ == "__main__":
+    create_inverse_index_catalogue()

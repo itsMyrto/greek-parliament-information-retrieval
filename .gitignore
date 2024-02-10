@@ -15,3 +15,6 @@ cacheAndSaved/inverse_index_catalogue_for_part3.pickle
 cacheAndSaved/twMatrix_sparce.pickle
 cacheAndSaved/U_s_V.pickle
 cacheAndSaved/inverse_index.pkl
+demo.csv
+inverse_index_old.py
+cleaned.csv
