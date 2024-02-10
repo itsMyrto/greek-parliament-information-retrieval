@@ -67,6 +67,7 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
         create_inverse_index_catalogue()
         print("Creating the inverse index")
 
+    print("Here")
     with open("inverse_index.pkl", 'rb') as file:
         inverse_index_catalogue = pickle.load(file)
 
@@ -111,5 +112,3 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
                         ld[i] += (tf*idft)**2
         accumulators[i] = accumulators[i] / math.sqrt(ld[i])
     return accumulators
-
-create_inverse_index_catalogue()
