@@ -112,6 +112,3 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
         accumulators[i] = accumulators[i] / math.sqrt(ld[i])
         
     return accumulators
-
-if __name__ == "__main__":
-    create_inverse_index_catalogue()
