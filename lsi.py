@@ -2,105 +2,157 @@ import os
 import numpy as np
 from scipy.sparse.linalg import svds
 from inverse_index import create_inverse_index_catalogue, get_number_of_docs
+from scipy.sparse import coo_matrix, csr_matrix
 from sklearn.cluster import KMeans
 import pandas as pd
 import pickle
-
+import random
 
 NUMBER_OF_DOCS = get_number_of_docs()
 FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
+CLUSTERS = 100
+THRESHOLD = 80
 
 if not os.path.isfile(FILEPATH):
     print("File ", FILEPATH, " not found. Please modify the FILEPATH parameter inside the script.")
     exit(1)
 
-CLUSTERS = 500
-CLUSTER_ID = 100
-THRESHOLD = 80
-
-""" This function constructs the matrix where the LSI will be performed 
-    :returns LSI matrix, the term matrix and the document matrix
-"""
-def construct_matrix() -> np.array:
+def LSI():
 
     """ We load the inverse index catalogue """
     if not os.path.isfile("inverse_index.pkl"):
+        print("Creating the inverse index catalogue...")
         create_inverse_index_catalogue()
 
     with open("inverse_index.pkl", 'rb') as file:
         inverse_index_catalogue = pickle.load(file)
 
-    """ A 2D empty row-array  is created in order to store the different terms """
-    terms = np.empty((1, len(inverse_index_catalogue)), dtype=object)
-
-    """ A 2D empty column-array is created in order to store the document id's """
-    documents = np.empty((NUMBER_OF_DOCS, 1), dtype=object)
-
     """
-    A 2D array full of zeros is created in order to store 1's and 0's
+    A sparse matrix is created to store 1's and 0's
     1 if a term exists in a document, 0 otherwise
-    In this matrix the SVD will be applied 
+    In this matrix, the SVD will be applied
     """
-    matrix = np.zeros((NUMBER_OF_DOCS, len(inverse_index_catalogue)), np.float32)
+    data = []
+    rows = []
+    cols = []
 
-    """
-    This block loops through the inverse index catalogue and for
-    each word it finds which documents ids contain the specific word
-    in order to update the matrix array. It also adds each term in the
-    term array and each document id in the documents array
-    """
-    term_counter = 0
-    for term, term_list in inverse_index_catalogue.items():
-        terms[0][term_counter] = term
-        for i in range(1, len(term_list)):
-            document_id = term_list[i][0]
-            documents[document_id] = document_id
-            matrix[document_id, term_counter] = True
-        term_counter += 1
+    for term_counter, (term, term_dictionary) in enumerate(inverse_index_catalogue.items()):
+        for document_id, _ in term_dictionary.items():
+            rows.append(document_id)
+            cols.append(term_counter)
+            data.append(1)
 
-    return matrix, terms, documents
+    # Construct the sparse COO matrix
+    matrix = coo_matrix((data, (rows, cols)), shape=(NUMBER_OF_DOCS, len(inverse_index_catalogue)), dtype=np.float32)
 
-"""
-This function performs the LSI algorithm AND also creates clusters of speeches with common subject
-"""
-def LSI() -> np.array:
-    matrix, terms, documents = construct_matrix()
+    del inverse_index_catalogue
 
-    """ This function returns the top k singular values of the decomposition """
     U, S, Vh = svds(matrix, k=THRESHOLD)
 
-    print("Arrays from LSI")
-    print(U.shape, U)
-    print(S.shape, S)
-    print(Vh.shape, Vh)
+    del U, S
 
-    """
-    This is a 2D matrix that contains the document representation in a multidimensional space
-    The representation used is the term to concept
-    The formula for this representation is: document_concept = document * V
-    projecting the original data into the space defined by the top singular vectors
-    """
-    documents_representation = np.matmul(matrix, np.transpose(Vh))
+    Vh_sparse = csr_matrix(Vh)
+    matrix_csr = matrix.tocsr()
 
-    print("Document representation in multi-dimensional space")
-    print(documents_representation.shape, documents_representation)
+    projected_documents = matrix_csr.dot(Vh_sparse.T)
 
-    kmeans = KMeans(n_clusters=CLUSTERS, random_state=42, n_init="auto")
+    del Vh, Vh_sparse, matrix, matrix_csr
 
-    """ Applying the kmeans algorithm and then save for every point the cluster id it belongs in a new column in the dataframe """
-    cluster_id = kmeans.fit_predict(documents_representation)
+    np.savez("projected_documents.npz", data=projected_documents.data, indices=projected_documents.indices, indptr=projected_documents.indptr, shape=projected_documents.shape)
+
+    return
+
+def clustering_speeches():
+
+    if not os.path.isfile("projected_documents.npz"):
+        LSI()
+
+    loaded_data = np.load("projected_documents.npz")
+    projected_documents = csr_matrix((loaded_data['data'], loaded_data['indices'], loaded_data['indptr']), shape=loaded_data['shape'])
+    random_subset_size = projected_documents.shape[0] // 2
+
+    # Randomly sample a subset for K-means clustering
+    random_indices = random.sample(range(projected_documents.shape[0]), random_subset_size)
+    random_subset = projected_documents[random_indices]
+
+    # Run K-means clustering on the random subset
+    kmeans = KMeans(n_clusters=CLUSTERS, random_state=0)
+    random_labels = kmeans.fit_predict(random_subset)
+    cluster_centers = kmeans.cluster_centers_
+
+    # Create an array with vectors corresponding to the remaining indices
+    # Get the indices of documents not in the random subset
+    remaining_indices = np.setdiff1d(np.arange(projected_documents.shape[0]), random_indices)
+
+    # Save results to a file
+    np.savez("kmeans_results.npz", random_labels=random_labels, cluster_centers=cluster_centers, random_indices=random_indices, remaining_indices=remaining_indices)
+
+    # Load the kmeans results from the file
+    results = np.load("kmeans_results.npz")
+
+    # Access the random_labels and cluster_centers arrays
+    random_labels = results['random_labels']
+    cluster_centers = results['cluster_centers']
+    random_indices = results['random_indices']
+    remaining_indices = results['remaining_indices']
+
+    # Initialize dictionary to store document IDs and cluster assignments
+    cluster_document_info = {i: [] for i in range(CLUSTERS)}
+    for i in range(random_subset_size):
+        cluster_document_info[random_labels[i]].append(random_indices[i])
+
+
+    # Create an array with vectors corresponding to the remaining indices
+    remaining_vectors = projected_documents[remaining_indices]
+
+    # Compute Manhattan distance for each remaining document to each cluster center
+    i = 0
+    for doc_id, vector in zip(remaining_indices, remaining_vectors):
+        min_distance = float('inf')
+        min_cluster = -1
+        for j, center in enumerate(cluster_centers):
+            distance = np.sum(np.abs(vector - center))  # Manhattan distance
+            if distance < min_distance:
+                min_distance = distance
+                min_cluster = j
+        cluster_document_info[min_cluster].append(doc_id)
+        i += 1
+        if i % 100000 == 0:
+            print("Processed ", i, " documents")
+
+    # Print the dictionary containing document IDs and cluster assignments
+    for cluster, info in cluster_document_info.items():
+        print("Cluster", cluster, ":")
+        print("  Document IDs:", info)
+
+    with open('final_clustering_results.pkl', 'wb') as file:
+        pickle.dump(cluster_document_info, file)
+
+    return
+
+
+def print_clusters():
+
+    cluster_id = 13
+
+    if not os.path.isfile("final_clustering_results.pkl"):
+        clustering_speeches()
+
+    with open("final_clustering_results.pkl", 'rb') as file:
+        cluster_document_info = pickle.load(file)
+
+    random_cluster = cluster_document_info[cluster_id]
 
     df_ = pd.read_csv(FILEPATH)
     df_.dropna(subset=['member_name'], inplace=True)
     df_ = df_.reset_index(drop=True)
 
-    print("Printing all the speeches that belong in cluster ", CLUSTER_ID)
-    for i in range(0, len(cluster_id)):
-        if cluster_id[i] == CLUSTER_ID:
-            print(df_.loc[i, "speech"])
+    for index in random_cluster:
+        print(df_.loc[index, "speech"])
+
+    return
 
 
-
-LSI()
+print_clusters()
 
 

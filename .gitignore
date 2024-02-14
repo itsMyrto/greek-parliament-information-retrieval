@@ -18,3 +18,5 @@ cacheAndSaved/inverse_index.pkl
 demo.csv
 inverse_index_old.py
 cleaned.csv
+kmeans_results.npz
+final_clustering_results.pkl
