@@ -178,13 +178,13 @@ def preFlightCheck():
 if __name__ == "__main__":
     preFlightCheck()
     
-    politicians = ["βελοπουλος ιωσηφ κυριακος", "βαρουφακης γεωργιου γιανης",]#, "κουτσουμπας αποστολου δημητριος"]
-    politicians = ["τσιπρας παυλου αλεξιος", "γεωργιαδης αθανασιου σπυριδων-αδωνις", "βαρουφακης γεωργιου γιανης", "κουτσουμπας αποστολου δημητριος", "βελοπουλος ιωσηφ κυριακος", "μητσοτακης κωνσταντινου κυριακος"]
+    politicians = ["μητσοτακης κωνσταντινου κυριακος", "τσιπρας παυλου αλεξιος"]#, "κουτσουμπας αποστολου δημητριος"]
+    #politicians = ["τσιπρας παυλου αλεξιος", "γεωργιαδης αθανασιου σπυριδων-αδωνις", "βαρουφακης γεωργιου γιανης", "κουτσουμπας αποστολου δημητριος", "βελοπουλος ιωσηφ κυριακος", "μητσοτακης κωνσταντινου κυριακος"]
     countsList = []
     
     
     for politician in politicians:
-        speechesDF :pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 200", conn)
+        speechesDF: pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 200", conn)
         
         tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
         

@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from scipy.sparse.linalg import svds
 from inverse_index import create_inverse_index_catalogue, get_number_of_docs
@@ -8,10 +9,10 @@ import pandas as pd
 import pickle
 import random
 
-NUMBER_OF_DOCS = get_number_of_docs()
+
 FILEPATH = "Greek_Parliament_Proceedings_1989_2020.csv"
-CLUSTERS = 100
 THRESHOLD = 80
+CLUSTERS = 100
 
 if not os.path.isfile(FILEPATH):
     print("File ", FILEPATH, " not found. Please modify the FILEPATH parameter inside the script.")
@@ -41,6 +42,8 @@ def LSI():
             rows.append(document_id)
             cols.append(term_counter)
             data.append(1)
+
+    NUMBER_OF_DOCS = get_number_of_docs()
 
     # Construct the sparse COO matrix
     matrix = coo_matrix((data, (rows, cols)), shape=(NUMBER_OF_DOCS, len(inverse_index_catalogue)), dtype=np.float32)
@@ -131,9 +134,7 @@ def clustering_speeches():
     return
 
 
-def print_clusters():
-
-    cluster_id = 13
+def print_clusters(CLUSTER_ID):
 
     if not os.path.isfile("final_clustering_results.pkl"):
         clustering_speeches()
@@ -141,7 +142,7 @@ def print_clusters():
     with open("final_clustering_results.pkl", 'rb') as file:
         cluster_document_info = pickle.load(file)
 
-    random_cluster = cluster_document_info[cluster_id]
+    random_cluster = cluster_document_info[CLUSTER_ID]
 
     df_ = pd.read_csv(FILEPATH)
     df_.dropna(subset=['member_name'], inplace=True)
@@ -153,6 +154,10 @@ def print_clusters():
     return
 
 
-print_clusters()
+if __name__ == "__main__":
 
-
+    func = sys.argv[1]
+    if func == "lsi":
+        LSI()
+    elif func == "clustering":
+        print_clusters(int(sys.argv[2]))

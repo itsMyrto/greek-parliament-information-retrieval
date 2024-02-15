@@ -9,12 +9,14 @@ if not os.path.isfile("cleaned_data.csv"):
     print("Creating cleaned dataset...")
     dataCleanupPart1.clean_dataset()
 
-df = pd.read_csv("cleaned_data.csv")
 
 def get_number_of_docs():
+    df = pd.read_csv("cleaned_data.csv")
     return len(df)
 
 def create_inverse_index_catalogue():
+
+    df = pd.read_csv("cleaned_data.csv")
     """
     Create an inverse index catalogue and save it as a pickle file.
     The inverse index catalogue maps words to a list of documents containing the word and their term frequency.
@@ -58,6 +60,8 @@ def calculate_tf_idf_similarity(cleaned_query: list) -> list:
     Returns:
         list: List of TF-IDF similarity scores for each document.
     """
+
+    df = pd.read_csv("cleaned_data.csv")
 
     if not os.path.isfile("inverse_index.pkl"):
         create_inverse_index_catalogue()
