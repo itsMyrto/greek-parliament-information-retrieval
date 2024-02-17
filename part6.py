@@ -163,6 +163,7 @@ def createCounts(tokens: list) -> dict:
 def preFlightCheck():
     # Create the database
     from os.path import isfile, getsize
+
     # Files to check: speeches.db, cacheAndSaved/inverse_index_catalogue_for_part3.pickle, cacheAndSaved/twMatrix_sparce.pickle, cacheAndSaved/U_s_V.pickle
     
     # Check if initial db has been created
@@ -171,25 +172,44 @@ def preFlightCheck():
         print("Generating speeches.db for the first time, this may take 2-3 mins")
         dbCommons.makeDb(conn)
         conn.close()
-    conn = sqlite3.connect('speeches.db')
+
     
-        
+import argparse        
+
 
 if __name__ == "__main__":
-    preFlightCheck()
     
-    politicians = ["μητσοτακης κωνσταντινου κυριακος", "τσιπρας παυλου αλεξιος"]#, "κουτσουμπας αποστολου δημητριος"]
-    #politicians = ["τσιπρας παυλου αλεξιος", "γεωργιαδης αθανασιου σπυριδων-αδωνις", "βαρουφακης γεωργιου γιανης", "κουτσουμπας αποστολου δημητριος", "βελοπουλος ιωσηφ κυριακος", "μητσοτακης κωνσταντινου κυριακος"]
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--politicians", nargs="+", help="List of politicians")
+    parser.add_argument("--limit", type=int, help="Limit of speeches")
+    parser.add_argument("--demo", action="store_true", help="Execute the current query")
+    args = parser.parse_args()
+
+    
+    preFlightCheck()
+    conn = sqlite3.connect('speeches.db')
+    
+    politicians = args.politicians if args.politicians else []
+    if args.limit:
+        limit = args.limit
+    else:
+        limit = 200
+        print("Running with default speech limit 200")
+    
+    if args.demo:
+        print("Demo mode, running for Μητσοτάκης Κωνσταντίνου Κυριάκος and Τσίπρας Παύλου Αλέξιος")
+        politicians = ["μητσοτακης κωνσταντινου κυριακος", "τσιπρας παυλου αλεξιος"]
+    
     countsList = []
     
-    
     for politician in politicians:
-        speechesDF: pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT 200", conn)
+        speechesDF: pd.DataFrame = pd.read_sql_query(f"SELECT * FROM speeches WHERE member_name = \"{politician}\" LIMIT {limit}", conn)
         
         tokens = speechesToTokens(speechesDF=speechesDF, politician=politician.title())
         
         counts = createCounts(tokens)
         counts["member_name"] = politician.title()
         countsList.append(counts)
-    # print(countsList)
+    
     displayPlots(countsList)
